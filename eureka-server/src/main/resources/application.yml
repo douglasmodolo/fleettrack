@@ -1,0 +1,17 @@
+server:
+  port: 8761 # porta padrão do Eureka — os clients já procuram aqui por convenção
+
+spring:
+  application:
+    name: eureka-server
+
+eureka:
+  client:
+    # O Eureka Server não precisa se registrar nele mesmo
+    # nem buscar o registro de outros — ele É o registro
+    register-with-eureka: false
+    fetch-registry: false
+  server:
+    # Aguarda 5 segundos antes de aceitar registros
+    # evita instabilidade na inicialização
+    wait-time-in-ms-when-sync-empty: 5000
