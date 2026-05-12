@@ -18,6 +18,8 @@ import java.util.UUID;
 public class Order {
 
     private UUID id;
+    private Long version;
+
     private String customerName;
 
     // Endereços são Value Objects — não têm identidade própria,
@@ -72,6 +74,7 @@ public class Order {
     // Não aplica regras de inicialização — os valores já existem e
     // devem ser preservados exatamente como estão.
     public static Order reconstitute(UUID id,
+                                     Long version,
                                      String customerName,
                                      Address originAddress,
                                      Address destinationAddress,
@@ -84,6 +87,7 @@ public class Order {
                                      LocalDateTime deliveredAt) {
         Order order = new Order();
         order.id = id;
+        order.version = version;
         order.customerName = customerName;
         order.originAddress = originAddress;
         order.destinationAddress = destinationAddress;

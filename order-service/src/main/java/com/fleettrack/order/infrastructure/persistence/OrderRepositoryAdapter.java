@@ -16,11 +16,11 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
 
     @Override
     public Order save(Order order) {
-        OrderJpaEntity entity = OrderMapper.fromDomain(order);
-
-        OrderJpaEntity createdEntity = repository.save(entity);
-
-        return OrderMapper.toDomain(createdEntity);
+        boolean exists = repository.existsById(order.getId());
+        OrderJpaEntity entity = exists
+                ? OrderMapper.fromDomainForUpdate(order)
+                : OrderMapper.fromDomain(order);
+        return OrderMapper.toDomain(repository.save(entity));
     }
 
     @Override

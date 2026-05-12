@@ -3,6 +3,7 @@ package com.fleettrack.order.infrastructure.persistence;
 import com.fleettrack.order.domain.model.OrderStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.domain.Persistable;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -19,7 +20,16 @@ import java.util.UUID;
 // PROTECTED impede que código de negócio crie uma entidade vazia.
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class OrderJpaEntity {
+public class OrderJpaEntity implements Persistable<UUID> {
+
+    @Transient
+    @Builder.Default
+    private boolean isNew = true;
+
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
 
     @Id
     // UUID gerado pela aplicação, não pelo banco.

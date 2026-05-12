@@ -1,13 +1,13 @@
 package com.fleettrack.order.presentation.mapper;
 
 import com.fleettrack.order.application.port.in.CreateOrderCommand;
+import com.fleettrack.order.application.port.in.UpdateOrderStatusCommand;
 import com.fleettrack.order.domain.model.Address;
 import com.fleettrack.order.domain.model.Order;
-import com.fleettrack.order.presentation.dto.AddressRequest;
-import com.fleettrack.order.presentation.dto.AddressResponse;
-import com.fleettrack.order.presentation.dto.CreateOrderRequest;
-import com.fleettrack.order.presentation.dto.OrderResponse;
+import com.fleettrack.order.presentation.dto.*;
 import org.springframework.stereotype.Component;
+
+import java.util.UUID;
 
 // Mapper da camada presentation — converte entre DTOs HTTP e objetos do domain/application.
 // Existe para isolar a apresentação do domínio — o controller não monta objetos manualmente.
@@ -22,6 +22,10 @@ public class OrderPresentationMapper {
                 toAddressDomain(request.getOriginAddress()),
                 toAddressDomain(request.getDestinationAddress())
         );
+    }
+
+    public UpdateOrderStatusCommand toCommand(UUID id, UpdateOrderStatusRequest request) {
+        return new UpdateOrderStatusCommand(id, request.getStatus());
     }
 
     // Converte o Order do domain em resposta HTTP.
