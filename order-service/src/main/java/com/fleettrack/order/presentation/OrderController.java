@@ -2,6 +2,7 @@ package com.fleettrack.order.presentation;
 
 import com.fleettrack.order.application.port.in.CreateOrderCommand;
 import com.fleettrack.order.application.port.in.CreateOrderUseCase;
+import com.fleettrack.order.application.port.in.GetOrderByIdUseCase;
 import com.fleettrack.order.domain.model.Order;
 import com.fleettrack.order.presentation.dto.CreateOrderRequest;
 import com.fleettrack.order.presentation.dto.OrderResponse;
@@ -9,12 +10,10 @@ import com.fleettrack.order.presentation.mapper.OrderPresentationMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/orders")
@@ -22,6 +21,7 @@ import java.net.URI;
 public class OrderController {
 
     private final CreateOrderUseCase createOrderUseCase;
+    private final GetOrderByIdUseCase getOrderByIdUseCase;
     private final OrderPresentationMapper orderPresentationMapper;
 
     @PostMapping
@@ -33,5 +33,12 @@ public class OrderController {
         return ResponseEntity
                 .created(URI.create("/orders/" + order.getId()))
                 .body(response);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<OrderResponse> getOrderById(@PathVariable("id") UUID id) {
+        Order order =  getOrderByIdUseCase.execute(id);
+        OrderResponse response = orderPresentationMapper.toResponse(order);
+        return ResponseEntity.ok(response);
     }
 }
