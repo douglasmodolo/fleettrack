@@ -9,6 +9,8 @@ import com.fleettrack.order.presentation.dto.UpdateOrderStatusRequest;
 import com.fleettrack.order.presentation.mapper.OrderPresentationMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +24,7 @@ public class OrderController {
 
     private final CreateOrderUseCase createOrderUseCase;
     private final GetOrderByIdUseCase getOrderByIdUseCase;
+    private final GetAllOrdersUseCase getAllOrdersUseCase;
     private final UpdateOrderStatusUseCase updateOrderStatusUseCase;
     private final AssignOrderDriverUseCase assignOrderDriverUseCase;
     private final OrderPresentationMapper orderPresentationMapper;
@@ -42,6 +45,12 @@ public class OrderController {
         Order order =  getOrderByIdUseCase.execute(id);
         OrderResponse response = orderPresentationMapper.toResponse(order);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<OrderResponse>> getAllOrders(Pageable pageable) {
+        Page<Order> orders = getAllOrdersUseCase.execute(pageable);
+        return ResponseEntity.ok(orders.map(orderPresentationMapper::toResponse));
     }
 
     @PatchMapping("/{id}/status")

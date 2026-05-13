@@ -3,6 +3,8 @@ package com.fleettrack.order.infrastructure.persistence;
 import com.fleettrack.order.application.port.out.OrderRepositoryPort;
 import com.fleettrack.order.domain.model.Order;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -28,5 +30,12 @@ public class OrderRepositoryAdapter implements OrderRepositoryPort {
         // map() converte Optional<OrderJpaEntity> para Optional<Order>
         // se vazio, retorna Optional.empty() automaticamente
         return repository.findById(id).map(OrderMapper::toDomain);
+    }
+
+    @Override
+    public Page<Order> findAll(Pageable pageable) {
+        // map() aplica a conversão em cada elemento da página
+        // mantendo as informações de paginação (total, página atual, etc.)
+        return repository.findAll(pageable).map(OrderMapper::toDomain);
     }
 }
