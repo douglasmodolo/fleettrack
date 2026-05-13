@@ -1,10 +1,13 @@
 package com.fleettrack.order.domain.model;
 
+import com.fleettrack.order.domain.exception.InvalidOrderStatusTransitionException;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 // Entidade de domínio — representa um pedido de entrega.
@@ -47,6 +50,14 @@ public class Order {
     // o pedido evolui — nunca pelo chamador diretamente.
     private LocalDateTime pickedUpAt;
     private LocalDateTime deliveredAt;
+
+    private static final Map<OrderStatus, List<OrderStatus>> ALLOWED_TRANSITIONS = Map.of(
+            OrderStatus.PENDING,   List.of(OrderStatus.PICKED_UP, OrderStatus.IN_TRANSIT, OrderStatus.DELIVERED, OrderStatus.CANCELLED),
+            OrderStatus.PICKED_UP, List.of(OrderStatus.IN_TRANSIT, OrderStatus.DELIVERED, OrderStatus.CANCELLED),
+            OrderStatus.IN_TRANSIT, List.of(OrderStatus.DELIVERED, OrderStatus.CANCELLED),
+            OrderStatus.DELIVERED,  List.of(),
+            OrderStatus.CANCELLED,  List.of()
+    );
 
     // Factory method — único ponto de criação de um novo pedido.
     // Centraliza todas as regras de inicialização: status sempre começa
@@ -106,6 +117,14 @@ public class Order {
     // Preenche automaticamente pickedUpAt e deliveredAt quando o status
     // muda para os estados correspondentes.
     public void updateStatus(OrderStatus newStatus) {
+        // Valida se a transição é permitida antes de qualquer mudança.
+        // A regra fica no domain — qualquer camada que chamar esse método
+        // recebe a proteção automaticamente.
+        List<OrderStatus> allowed = ALLOWED_TRANSITIONS.get(this.status);
+        if (!allowed.contains(newStatus)) {
+            throw new InvalidOrderStatusTransitionException(this.status, newStatus);
+        }
+
         this.status = newStatus;
         markAsUpdated();
 

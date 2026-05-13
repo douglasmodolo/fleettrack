@@ -1,5 +1,6 @@
 package com.fleettrack.order.presentation;
 
+import com.fleettrack.order.domain.exception.InvalidOrderStatusTransitionException;
 import com.fleettrack.order.domain.exception.OrderNotFoundException;
 import com.fleettrack.order.presentation.dto.ErrorResponse;
 import org.springframework.http.ResponseEntity;
@@ -44,5 +45,16 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(404).body(response);
+    }
+
+    @ExceptionHandler(InvalidOrderStatusTransitionException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidTransition(InvalidOrderStatusTransitionException ex) {
+        var response = new ErrorResponse(
+                422,
+                ex.getMessage(),
+                LocalDateTime.now(),
+                null
+        );
+        return ResponseEntity.unprocessableEntity().body(response);
     }
 }
