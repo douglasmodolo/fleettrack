@@ -12,6 +12,7 @@ import java.util.UUID;
 @Value
 public class OrderResponse {
     UUID id;
+    UUID driverId;
     OrderStatus status;
     LocalDateTime createdAt;
     LocalDateTime estimatedDeliveryAt;

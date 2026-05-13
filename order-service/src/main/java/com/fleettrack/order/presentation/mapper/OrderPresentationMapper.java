@@ -1,5 +1,6 @@
 package com.fleettrack.order.presentation.mapper;
 
+import com.fleettrack.order.application.port.in.AssignOrderDriverCommand;
 import com.fleettrack.order.application.port.in.CreateOrderCommand;
 import com.fleettrack.order.application.port.in.UpdateOrderStatusCommand;
 import com.fleettrack.order.domain.model.Address;
@@ -28,11 +29,16 @@ public class OrderPresentationMapper {
         return new UpdateOrderStatusCommand(id, request.getStatus());
     }
 
+    public AssignOrderDriverCommand toCommand(UUID id, AssignOrderDriverRequest request) {
+        return new AssignOrderDriverCommand(id, request.getDriverId());
+    }
+
     // Converte o Order do domain em resposta HTTP.
     // O cliente não recebe o objeto de domínio — recebe um DTO controlado.
     public OrderResponse toResponse(Order order) {
         return new OrderResponse(
                 order.getId(),
+                order.getDriverId(),
                 order.getStatus(),
                 order.getCreatedAt(),
                 order.getEstimatedDeliveryAt(),

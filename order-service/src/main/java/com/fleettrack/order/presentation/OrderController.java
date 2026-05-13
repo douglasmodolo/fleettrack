@@ -2,6 +2,7 @@ package com.fleettrack.order.presentation;
 
 import com.fleettrack.order.application.port.in.*;
 import com.fleettrack.order.domain.model.Order;
+import com.fleettrack.order.presentation.dto.AssignOrderDriverRequest;
 import com.fleettrack.order.presentation.dto.CreateOrderRequest;
 import com.fleettrack.order.presentation.dto.OrderResponse;
 import com.fleettrack.order.presentation.dto.UpdateOrderStatusRequest;
@@ -22,6 +23,7 @@ public class OrderController {
     private final CreateOrderUseCase createOrderUseCase;
     private final GetOrderByIdUseCase getOrderByIdUseCase;
     private final UpdateOrderStatusUseCase updateOrderStatusUseCase;
+    private final AssignOrderDriverUseCase assignOrderDriverUseCase;
     private final OrderPresentationMapper orderPresentationMapper;
 
     @PostMapping
@@ -46,6 +48,14 @@ public class OrderController {
     public ResponseEntity<OrderResponse> updateOrderStatus(@Valid @RequestBody UpdateOrderStatusRequest request, @PathVariable("id") UUID id) {
         UpdateOrderStatusCommand command = orderPresentationMapper.toCommand(id, request);
         Order order = updateOrderStatusUseCase.execute(command);
+        OrderResponse response = orderPresentationMapper.toResponse(order);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/driver")
+    public ResponseEntity<OrderResponse> assignOrderDriver(@Valid @RequestBody AssignOrderDriverRequest request, @PathVariable("id") UUID id) {
+        AssignOrderDriverCommand command = orderPresentationMapper.toCommand(id, request);
+        Order order = assignOrderDriverUseCase.execute(command);
         OrderResponse response = orderPresentationMapper.toResponse(order);
         return ResponseEntity.ok(response);
     }
