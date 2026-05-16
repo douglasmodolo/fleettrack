@@ -9,7 +9,7 @@ Responsible for managing delivery orders within the FleetTrack logistics system.
 - Create and manage delivery orders
 - Validate and enforce order status transitions
 - Assign drivers to orders
-- Publish events when order status changes (upcoming: Kafka integration)
+- Publish domain events to Kafka when orders are created
 
 ---
 
@@ -21,10 +21,10 @@ This service follows **Clean Architecture**, organized into four layers:
 presentation/     ← REST controllers, DTOs, input validation
 application/      ← Use cases and ports (interfaces)
 domain/           ← Business rules, entities, domain exceptions
-infrastructure/   ← JPA persistence, database adapters
+infrastructure/   ← JPA persistence, Kafka publisher, database adapters
 ```
 
-The core rule: **inner layers never depend on outer layers.** The domain has no knowledge of Spring, JPA, or HTTP. If the database is swapped tomorrow, the domain doesn't change.
+The core rule: **inner layers never depend on outer layers.** The domain has no knowledge of Spring, JPA, Kafka, or HTTP. If the database or message broker is swapped tomorrow, the domain doesn't change.
 
 ### Key design decisions
 
@@ -52,7 +52,7 @@ CANCELLED  → (final state)
 Forward skips are allowed (e.g. PENDING → DELIVERED for operational flexibility). Backwards transitions are always rejected. Invalid transitions return `422 Unprocessable Entity`.
 
 **Ports and Adapters**
-Use cases depend on interfaces (`OrderRepositoryPort`), never on JPA directly. The infrastructure implements those interfaces. This makes the domain testable in isolation — no Spring context needed.
+Use cases depend on interfaces (`OrderRepositoryPort`, `OrderEventPublisherPort`), never on JPA or Kafka directly. The infrastructure implements those interfaces. This makes the domain testable in isolation — no Spring context needed.
 
 **Optimistic Locking**
 `OrderJpaEntity` has a `@Version` field managed by Hibernate. If two transactions try to update the same order concurrently, the second one receives an `OptimisticLockingFailureException`. The `version` field is carried through the domain object to ensure correct merge behavior.
@@ -62,6 +62,9 @@ Use cases depend on interfaces (`OrderRepositoryPort`), never on JPA directly. T
 
 **Schema versioning with Flyway**
 Database schema is managed by Flyway migrations in `src/main/resources/db/migration/`. The Hibernate `ddl-auto` is set to `validate` — it verifies the schema matches the entities but never modifies it. All schema changes must go through a versioned migration file.
+
+**Domain Events via Kafka**
+After an order is successfully persisted, a domain event is published to Kafka. The use case depends on `OrderEventPublisherPort` — an interface. The infrastructure implements it using `KafkaTemplate`. The use case never imports Kafka classes.
 
 ---
 
@@ -171,6 +174,31 @@ The `driverId` appears in the response only when assigned — omitted when null.
 
 ---
 
+## Events
+
+### Published
+
+| Event | Topic | Trigger |
+|-------|-------|---------|
+| `OrderCreatedEvent` | `order.created` | When a new order is successfully created |
+
+**OrderCreatedEvent payload:**
+```json
+{
+  "orderId": "92d3d14a-70dd-45b3-97f4-aa4257c91b61",
+  "customerName": "Douglas Silva",
+  "status": "PENDING",
+  "createdAt": "2026-05-13T19:17:47",
+  "estimatedDeliveryAt": "2026-05-16T19:17:47"
+}
+```
+
+The event key is the `orderId` — this ensures all events for the same order go to the same Kafka partition, preserving order of events.
+
+The event is published **after** the order is persisted — if the database save fails, no event is published.
+
+---
+
 ## Error responses
 
 All errors follow a consistent format handled by `GlobalExceptionHandler`:
@@ -243,6 +271,8 @@ mvn test
 | Spring Data JPA | ORM and repository abstraction |
 | PostgreSQL | Relational database (port `5433` via Docker) |
 | Flyway | Database schema versioning |
+| Apache Kafka | Event streaming — publishes domain events |
+| Spring Kafka | Kafka integration for Spring Boot |
 | Lombok | Boilerplate reduction |
 | Bean Validation | Input validation on DTOs |
 | Spring Cloud Netflix Eureka | Service discovery |
@@ -259,8 +289,10 @@ mvn test
 | Clean Architecture | Package structure across all layers |
 | Factory Method | `Order.create()` and `Order.reconstitute()` |
 | Value Object | `Address` — no identity, defined by its values |
-| Ports and Adapters | `OrderRepositoryPort` ↔ `OrderRepositoryAdapter` |
+| Ports and Adapters | `OrderRepositoryPort` ↔ `OrderRepositoryAdapter`, `OrderEventPublisherPort` ↔ `KafkaOrderEventPublisher` |
 | Optimistic Locking | `@Version` on `OrderJpaEntity` |
 | Status Transition Guard | `ALLOWED_TRANSITIONS` map in `Order.updateStatus()` |
+| Domain Events | `OrderCreatedEvent` published after order persistence |
+| Saga Choreography | Services react to events without direct coupling |
 | Global Exception Handler | `GlobalExceptionHandler` with `@RestControllerAdvice` |
 | Schema Migration | Flyway versioned SQL files in `db/migration/` |
