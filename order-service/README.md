@@ -49,7 +49,7 @@ DELIVERED  → (final state)
 CANCELLED  → (final state)
 ```
 
-Forward skips are allowed (e.g. PENDING → DELIVERED for operational flexibility). Backwards transitions are always rejected.
+Forward skips are allowed (e.g. PENDING → DELIVERED for operational flexibility). Backwards transitions are always rejected. Invalid transitions return `422 Unprocessable Entity`.
 
 **Ports and Adapters**
 Use cases depend on interfaces (`OrderRepositoryPort`), never on JPA directly. The infrastructure implements those interfaces. This makes the domain testable in isolation — no Spring context needed.
@@ -60,6 +60,9 @@ Use cases depend on interfaces (`OrderRepositoryPort`), never on JPA directly. T
 **Separate JPA entity**
 `OrderJpaEntity` and `AddressEmbeddable` live in the infrastructure layer. The domain `Order` and `Address` have no JPA annotations — they're plain Java. `OrderMapper` handles conversion between the two representations.
 
+**Schema versioning with Flyway**
+Database schema is managed by Flyway migrations in `src/main/resources/db/migration/`. The Hibernate `ddl-auto` is set to `validate` — it verifies the schema matches the entities but never modifies it. All schema changes must go through a versioned migration file.
+
 ---
 
 ## Endpoints
@@ -68,9 +71,9 @@ Use cases depend on interfaces (`OrderRepositoryPort`), never on JPA directly. T
 |--------|------|-------------|--------|
 | `POST` | `/orders` | Create a new order | `201 Created` |
 | `GET` | `/orders/{id}` | Get order by ID | `200 OK` |
-| `GET` | `/orders` | List orders (paginated) | `200 OK` — *coming soon* |
+| `GET` | `/orders` | List orders (paginated) | `200 OK` |
 | `PATCH` | `/orders/{id}/status` | Update order status | `200 OK` |
-| `PATCH` | `/orders/{id}/driver` | Assign driver to order | `200 OK` — *coming soon* |
+| `PATCH` | `/orders/{id}/driver` | Assign driver to order | `200 OK` |
 
 ### POST /orders
 
@@ -98,14 +101,41 @@ Use cases depend on interfaces (`OrderRepositoryPort`), never on JPA directly. T
 }
 ```
 
-**Response:**
+**Response `201 Created`:**
 ```json
 {
   "id": "92d3d14a-70dd-45b3-97f4-aa4257c91b61",
   "status": "PENDING",
   "createdAt": "2026-05-13T19:17:47.386591",
   "estimatedDeliveryAt": "2026-05-16T19:17:47.386591",
-  "destinationAddress": { ... }
+  "destinationAddress": {
+    "country": "Brasil",
+    "state": "SP",
+    "city": "Campinas",
+    "zipCode": "13010-100",
+    "street": "Rua Conceição",
+    "number": "250",
+    "complement": "Apto 42"
+  }
+}
+```
+
+### GET /orders
+
+Supports pagination via query params:
+
+```
+GET /orders?page=0&size=10
+```
+
+**Response `200 OK`:**
+```json
+{
+  "content": [ ... ],
+  "totalElements": 3,
+  "totalPages": 1,
+  "size": 10,
+  "number": 0
 }
 ```
 
@@ -128,11 +158,22 @@ Invalid transitions return `422 Unprocessable Entity`:
 }
 ```
 
+### PATCH /orders/{id}/driver
+
+**Request body:**
+```json
+{
+  "driverId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+The `driverId` appears in the response only when assigned — omitted when null.
+
 ---
 
 ## Error responses
 
-All errors follow a consistent format:
+All errors follow a consistent format handled by `GlobalExceptionHandler`:
 
 ```json
 {
@@ -177,6 +218,22 @@ The service starts on port `8081`. Eureka dashboard: `http://localhost:8761`.
 
 ---
 
+## Running tests
+
+```bash
+# from order-service/
+mvn test
+```
+
+| Test class | Type | What it covers |
+|---|---|---|
+| `OrderTest` | Unit | Domain rules — factory methods, status transitions |
+| `CreateOrderUseCaseImplTest` | Unit | Order creation use case with mocked repository |
+| `UpdateOrderStatusUseCaseImplTest` | Unit | Status update, order not found, invalid transition |
+| `OrderRepositoryAdapterTest` | Integration | JPA persistence with H2 in-memory database |
+
+---
+
 ## Stack
 
 | Technology | Purpose |
@@ -185,10 +242,13 @@ The service starts on port `8081`. Eureka dashboard: `http://localhost:8761`.
 | Spring Boot 3.2 | Application framework |
 | Spring Data JPA | ORM and repository abstraction |
 | PostgreSQL | Relational database (port `5433` via Docker) |
+| Flyway | Database schema versioning |
 | Lombok | Boilerplate reduction |
 | Bean Validation | Input validation on DTOs |
 | Spring Cloud Netflix Eureka | Service discovery |
 | Spring Boot Actuator | Health checks and metrics |
+| JUnit 5 + Mockito | Unit testing |
+| H2 | In-memory database for integration tests |
 
 ---
 
@@ -201,4 +261,6 @@ The service starts on port `8081`. Eureka dashboard: `http://localhost:8761`.
 | Value Object | `Address` — no identity, defined by its values |
 | Ports and Adapters | `OrderRepositoryPort` ↔ `OrderRepositoryAdapter` |
 | Optimistic Locking | `@Version` on `OrderJpaEntity` |
+| Status Transition Guard | `ALLOWED_TRANSITIONS` map in `Order.updateStatus()` |
 | Global Exception Handler | `GlobalExceptionHandler` with `@RestControllerAdvice` |
+| Schema Migration | Flyway versioned SQL files in `db/migration/` |
