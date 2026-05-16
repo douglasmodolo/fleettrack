@@ -71,6 +71,12 @@
             <version>10.10.0</version>
         </dependency>
 
+        <!-- Kafka: mensageria para publicação de eventos -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
         <!-- Testes -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
